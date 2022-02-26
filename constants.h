@@ -6,6 +6,7 @@ const int PIN_input_InverterReady = I0_0;  // Signal fra omformer når den er kl
 const int PIN_input_InterlockSAMIFI = I0_1; // Forrigling med SAMIFI platefryser
 const int PIN_input_PiezoBtnSwitchStart = I0_2; // Piezo bryter på skap som starter maskin
 const int PIN_input_PiezoBtnSwitchStop = I0_3; // Piezo bryter på skap som stopper maskin 
+const int PIN_input_EmergencyStopMonitor = I0_4; // Normally open kontakt blokk på nødstopp for monitoring
 const int PIN_input_SafetyRelayStatus = I0_5; // Rele signal fra sikkerhetsreleen for å vite når maskinen har stoppet på grunn av nødstopp
 
 // Sensor rekke som ser om produktet er rett vei

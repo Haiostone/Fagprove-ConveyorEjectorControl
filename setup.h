@@ -1,10 +1,6 @@
 #ifndef setup_h
 #define setup_h
 
-// Comment line below to enable or disable debuging code
-#define DEBUG
-//*******************************************************
-
 #ifdef DEBUG
 #define DEBUG_PRINT(x) Serial.print(x)
 #define DEBUG_PRINTLN(x) Serial.println(x)
@@ -14,7 +10,6 @@ void debugFunction()
 {
   // Set console baud rate
   Serial.begin(9600);
-  delay(10);
   // Code for debugging
 }
 #else
