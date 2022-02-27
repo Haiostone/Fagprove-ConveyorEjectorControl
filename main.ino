@@ -5,7 +5,6 @@
 #include "setup_ethernet.h"
 #include "setup_mqtt.h"
 
-#include "constants.h"
 #include "functions.h"
 
 #include <jled.h>
@@ -21,6 +20,21 @@ int RunState = 1;      // Hvilket steg maskinen er på
 int PrevRunState = 0;  // Forrigje steg maskinen var på
 bool FirstRunState = true;  // Om det er første syklus maskinen kjører på gjeldende steg
 
+const int SendPeriodInverterPowerUsage = 1000; // Hvor ofte omformer strømforbruk sendes
+unsigned long SendTimeInverterPowerUsage = 0; // Tiden når omformer strømforbruk sist ble sendt
+char StringBufferInverterPowerUsage[8]; // Buffer for å gjøre integer verdien om til string for å sendes via mqtt
+
+unsigned int BoxCount = 0; // Teller antall esker som har passert
+unsigned int BoxErrorCount = 0; // Teller totalt anntall esker som har feil og blitt kastet ut
+unsigned int BoxErrorCountFlaps = 0; // Teller esker med feilen: dårlig limt kant
+unsigned int BoxErrorCountDirection = 0; // Teller esker med feilen: feil rotert
+
+// Buffer for å gjøre eske teller verdiene over om til strings for å sendes via mqtt
+char StringBufferBoxCount[8];
+char StringBufferBoxErrorCount[8];
+char StringBufferBoxErrorCountFlaps[8];
+char StringBufferBoxErrorCountDirection[8];
+
 void setup() {
 #ifdef DEBUG
   debugFunction();
@@ -34,17 +48,21 @@ void loop() {
   #if ETHERNET_USE_DHCP
     Ethernet.maintain(); // Hvis DHCP er brukt for ip addresse, oppdatererer denne ip
   #endif
-
   mqttLoop(); // Kobler til mqtt broker // Holder mqtt i livet
 
   updateInputs(); // Oppdaterer variablene til PLS inputet
   JLedGreen.Update(); // Oppdaterer Led state
   JLedRed.Update(); // Oppdaterer Led state
 
+  TimeNow = millis(); // Lagrer tiden i en variabel slik at millis bare trenger å kjøre en gang per loop
 
-  InverterSetSpeedByte = InverterSetSpeedMiliVolt * MiliVoltToByteRatio;
-  //DEBUG_PRINTLN(InverterSetSpeedByte);
+  if (TimeNow - SendTimeInverterPowerUsage >= SendPeriodInverterPowerUsage) {
+    SendTimeInverterPowerUsage = TimeNow;
+    itoa(InverterPowerUsage, StringBufferInverterPowerUsage, 10); // Konverterer integer verdi til string som mqtt kan sende
+    mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/lastTransp", StringBufferInverterPowerUsage);
+  }
 
+  if (!InverterReady) RunState = 10; // Hvis omformer ikker er klar, for eksempel vis den slår ut på overstrøm, så stopper maskinen
   if (!SafetyRelayStatus && EmergencyStopMonitor) RunState = 0; // Sikkerhetsrele åpen, og nødstopp bryter fortsatt aktiv
   else if (!SafetyRelayStatus && !EmergencyStopMonitor) RunState = 1; // Sikkerhetsrele åpen, og nødstopp bryter har blitt reset
 
@@ -53,7 +71,7 @@ void loop() {
 
   switch (RunState) {
     case 0:
-      // Nødstopp aktivert - Kan ikke reset **********************************
+      // Nødstopp - Kan ikke reset **********************************
       if (FirstRunState) {
         digitalWrite(PIN_output_InverterStart, false);
         digitalWrite(PIN_output_InverterSpeedSignal, false);
@@ -61,12 +79,14 @@ void loop() {
 
         JLedRed = JLed(PIN_output_PiezoBtnLedRed).LowActive().Off();
         JLedGreen = JLed(PIN_output_PiezoBtnLedGreen).LowActive().Off();
+
+        mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/status", "2");
       }
 
       break;
 
     case 1:
-      // Nødstopp aktivert - Kan reset ***************************************
+      // Nødstopp - Kan reset ***************************************
       if (FirstRunState) {
         digitalWrite(PIN_output_InverterStart, false);
         digitalWrite(PIN_output_InverterSpeedSignal, false);
@@ -74,6 +94,8 @@ void loop() {
 
         JLedRed = JLed(PIN_output_PiezoBtnLedRed).LowActive().Blink(500, 500).Forever();
         JLedGreen = JLed(PIN_output_PiezoBtnLedGreen).LowActive().Off();
+
+        mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/status", "5");
       }
 
       if (BtnStop) {
@@ -90,6 +112,21 @@ void loop() {
       }
       break;
 
+    case 10:
+      if (FirstRunState) {
+        digitalWrite(PIN_output_InverterStart, false);
+        digitalWrite(PIN_output_InverterSpeedSignal, false);
+        digitalWrite(PIN_output_EjectorCylinderValve, false);
+
+        JLedRed = JLed(PIN_output_PiezoBtnLedRed).LowActive().Off();
+        JLedGreen = JLed(PIN_output_PiezoBtnLedGreen).LowActive().Off();
+
+        mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/status", "3");
+      }
+
+      if (InverterReady) RunState = 1;
+      break;
+
     case 2:
       // Maskin stoppet ******************************************************
       if (FirstRunState) {
@@ -99,6 +136,8 @@ void loop() {
 
         JLedRed = JLed(PIN_output_PiezoBtnLedRed).LowActive().Off();
         JLedGreen = JLed(PIN_output_PiezoBtnLedGreen).LowActive().On();
+
+        mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/status", "0");
       }
 
       if (BtnStart && !BtnStop) {
@@ -114,37 +153,51 @@ void loop() {
 
         JLedRed = JLed(PIN_output_PiezoBtnLedRed).LowActive().On();
         JLedGreen = JLed(PIN_output_PiezoBtnLedGreen).LowActive().On();
+
+        mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/status", "1");
       }
 
       analogWrite(PIN_output_InverterSpeedSignal, InverterSetSpeedByte); // Setter hastigheten på omformer til verdi mottat fra HMI
       
       // Kjører utkaster funksjonene og behandler status kodene
       BoxErrorCode = BoxErrorDetect();
-      if (BoxErrorCode != 0) EjectorState = 10;
-
+      if (BoxErrorCode != 0 && BoxErrorCode != 3) EjectorState = 10;
+      else if (BoxErrorCode == 3) ++BoxCount;
       switch (EjectorState) {
         case 10:
           EjectorStatusCode = ActivateEjector(EjectorActivateDelay);
           if (EjectorStatusCode == 1) {
             // Utkastet Fulført
             DEBUG_PRINTLN("Utkastet fulført");
+            // Inkrementerer verdi med antall esker med feil, og sender antallet
+            itoa(++BoxCount, StringBufferBoxCount, 10); // Konverterer integer verdi til string som mqtt kan sende
+            mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/telleverk", StringBufferBoxCount); 
             EjectorState = BoxErrorCode;
           }
           if (EjectorStatusCode == 2) {
             // Utkastet Feil
             DEBUG_PRINTLN("Utkastet feil");
+            // Inkrementerer verdi med antall esker med feil, og sender antallet
+            itoa(++BoxErrorCount, StringBufferBoxErrorCount, 10); // Konverterer integer verdi til string som mqtt kan sende
+            mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/feil", StringBufferBoxErrorCount); 
             EjectorState = BoxErrorCode;
           }
           break;
-        case 2:
+        case 1:
           // Eske feil: ulimt kant
           DEBUG_PRINTLN("ulimt kant");
+          // Inkrementerer verdi med antall esker med feil, og sender antallet
+          itoa(++BoxErrorCountFlaps, StringBufferBoxErrorCountFlaps, 10); // Konverterer integer verdi til string som mqtt kan sende
+          mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/feilUlimt", StringBufferBoxErrorCountFlaps); 
           EjectorState = 0;
           break;
 
-        case 3:
+        case 2:
           // Eske feil: skjev
           DEBUG_PRINTLN("skjev eske");
+          // Inkrementerer verdi med antall esker med feil, og sender antallet
+          itoa(++BoxErrorCountDirection, StringBufferBoxErrorCountDirection, 10); // Konverterer integer verdi til string som mqtt kan sende
+          mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/feilRotert", StringBufferBoxErrorCountDirection); 
           EjectorState = 0;
           break;
 
@@ -166,16 +219,15 @@ void loop() {
 
         JLedRed = JLed(PIN_output_PiezoBtnLedRed).LowActive().On();
         JLedGreen = JLed(PIN_output_PiezoBtnLedGreen).LowActive().Blink(500, 500).Forever();
+
+        mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/status", "4");
       }
+
+       analogWrite(PIN_output_InverterSpeedSignal, InverterSetSpeedByte);
 
       if (InterlockSamifi) RunState = 3;
       if (BtnStop) RunState = 2;
       break;
   }
-  
-  if(FirstRunState) {
-    mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/status", )
-  }
-  
   FirstRunState = false;
 }

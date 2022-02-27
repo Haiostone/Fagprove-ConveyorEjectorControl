@@ -3,7 +3,7 @@
 
 #include "PubSubClient.h"
 
-void callback(char *topic, byte *payload, unsigned int length) // handle message arrived
+void callback(char *topic, byte *payload, unsigned int length) // Callback funksjon for mottat payload
 {
 // Debugging
 #ifdef DEBUG
@@ -20,6 +20,7 @@ void callback(char *topic, byte *payload, unsigned int length) // handle message
 if (strcmp(topic, "Melbu/ferdigvare/vatpakk/eskelimer/inn/hastTtransp") == 0) {
     payload[length] = '\0'; // NULL terminerer payloadet for å få en string
     InverterSetSpeedMiliVolt = atoi((char *)payload); // konverterer stringen til en integer
+    InverterSetSpeedByte = InverterSetSpeedMiliVolt * MiliVoltToByteRatio; // Gjør om milivolt verdi fra mqtt payload, til en byte verdi som kan brukes på analog ut
 }
 }
 

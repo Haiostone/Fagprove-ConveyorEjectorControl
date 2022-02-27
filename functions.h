@@ -59,7 +59,7 @@ int BoxErrorDetect() {
     // Hvis ikke alle tre miderste sensorer ser esken, er esken skjev
       if (EjectorSensorMiddle && EjectorSensorMiddleLeft && EjectorSensorMiddleRight) {
         state = 4;
-        ReturnCode = 0;
+        ReturnCode = 3;
       } else {
         state = 4;
         ReturnCode = 2;
@@ -85,6 +85,7 @@ Return Koder:
 0 = Alt OK
 1 = Eske feil: dårlig limt
 2 = Eske feil: skjev
+3 = Eske Passert uten feil
 */
 }
 
