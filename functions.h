@@ -109,7 +109,7 @@ case 0:
 
 case 1: 
 // Forsinkelse på en bestent tid for når funksjonen først blir kalt, til sylinderet skal aktiveres (Endres basert på avstand mellom sensorer og utkaster)
-if(millis() - TimeSinceRequest >= EjectorDelay){
+if(millis() - TimeSinceRequest >= EjectorActivateDelay){
   digitalWrite(PIN_output_EjectorCylinderValve, true);
   state = 2;
 }
@@ -120,7 +120,7 @@ if(EjectorCylinderPosistion) {
 TimeSinceEjectorExtended = millis();
 state = 3;
 }
-else if(millis() - TimeSinceRequest >= EjectorOutInTimeout){
+else if(millis() - TimeSinceRequest - EjectorActivateDelay >= EjectorOutInTimeout){
   state = 4;
 }
 break;

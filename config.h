@@ -51,8 +51,8 @@ const unsigned int ScanNewBoxPeriod = 1000; // Forsinkelse i ms, mellom eske det
 
 // Utkaster
 const unsigned int EjectorActivateDelay = 425; // Forsinkelse i ms, fra funksjon blir kalt til utkastning begynner 
-const unsigned int EjectorOutInDelay = 300; // Forsinkelse i ms, mellom utkaster sylinder går ut, til den skal inn igjen
-const unsigned int EjectorOutInTimeout = 1000; // Forsinkelse i ms, for timeout på utkaster sylinder vis sylinder sensor aldri blir aktivert
+const unsigned int EjectorOutInDelay = 0; // Forsinkelse i ms, mellom utkaster sylinder går ut, til den skal inn igjen
+const unsigned int EjectorOutInTimeout = 500; // Forsinkelse i ms, for timeout på utkaster sylinder vis sylinder sensor aldri blir aktivert
 
 
 #endif

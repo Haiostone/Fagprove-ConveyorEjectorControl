@@ -14,7 +14,6 @@ auto JLedRed = JLed(PIN_output_PiezoBtnLedRed);
 
 int EjectorStatusCode; // Utkaster status kode, om utkastet ble fulført eller ikke
 int BoxErrorCode; // Lagrer hvilken type feil på eske det var
-int EjectorState = 0; // Hvilket steg utkasteren er på
 
 int RunState = 1;      // Hvilket steg maskinen er på
 int PrevRunState = 0;  // Forrigje steg maskinen var på
@@ -45,9 +44,9 @@ void setup() {
 
 void loop() {
 
-  #if ETHERNET_USE_DHCP
-    Ethernet.maintain(); // Hvis DHCP er brukt for ip addresse, oppdatererer denne ip
-  #endif
+#if ETHERNET_USE_DHCP
+  Ethernet.maintain(); // Hvis DHCP er brukt for ip addresse, oppdatererer denne ip
+#endif
   mqttLoop(); // Kobler til mqtt broker // Holder mqtt i livet
 
   updateInputs(); // Oppdaterer variablene til PLS inputet
@@ -158,54 +157,52 @@ void loop() {
       }
 
       analogWrite(PIN_output_InverterSpeedSignal, InverterSetSpeedByte); // Setter hastigheten på omformer til verdi mottat fra HMI
-      
+
       // Kjører utkaster funksjonene og behandler status kodene
       BoxErrorCode = BoxErrorDetect();
-      if (BoxErrorCode != 0 && BoxErrorCode != 3) EjectorState = 10;
-      else if (BoxErrorCode == 3) ++BoxCount;
-      switch (EjectorState) {
-        case 10:
+      if (BoxErrorCode != 0 && BoxErrorCode != 3) {
+        DEBUG_PRINTLN(BoxErrorCode);
+        EjectorStatusCode = 0;
+        while (!EjectorStatusCode) {
+          updateInputs();
           EjectorStatusCode = ActivateEjector(EjectorActivateDelay);
           if (EjectorStatusCode == 1) {
             // Utkastet Fulført
             DEBUG_PRINTLN("Utkastet fulført");
             // Inkrementerer verdi med antall esker med feil, og sender antallet
-            itoa(++BoxCount, StringBufferBoxCount, 10); // Konverterer integer verdi til string som mqtt kan sende
-            mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/telleverk", StringBufferBoxCount); 
-            EjectorState = BoxErrorCode;
+            itoa(++BoxErrorCount, StringBufferBoxErrorCount, 10); // Konverterer integer verdi til string som mqtt kan sende
+            mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/feil", StringBufferBoxErrorCount);
           }
           if (EjectorStatusCode == 2) {
             // Utkastet Feil
             DEBUG_PRINTLN("Utkastet feil");
-            // Inkrementerer verdi med antall esker med feil, og sender antallet
-            itoa(++BoxErrorCount, StringBufferBoxErrorCount, 10); // Konverterer integer verdi til string som mqtt kan sende
-            mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/feil", StringBufferBoxErrorCount); 
-            EjectorState = BoxErrorCode;
+            mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/feilUtkaster", "Feil på utkaster mekanisme");
           }
-          break;
-        case 1:
+        }
+        if (BoxErrorCode == 1) {
           // Eske feil: ulimt kant
           DEBUG_PRINTLN("ulimt kant");
           // Inkrementerer verdi med antall esker med feil, og sender antallet
           itoa(++BoxErrorCountFlaps, StringBufferBoxErrorCountFlaps, 10); // Konverterer integer verdi til string som mqtt kan sende
-          mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/feilUlimt", StringBufferBoxErrorCountFlaps); 
-          EjectorState = 0;
-          break;
+          mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/feilUlimt", StringBufferBoxErrorCountFlaps);
+        }
 
-        case 2:
+        else if (BoxErrorCode == 2) {
           // Eske feil: skjev
           DEBUG_PRINTLN("skjev eske");
           // Inkrementerer verdi med antall esker med feil, og sender antallet
           itoa(++BoxErrorCountDirection, StringBufferBoxErrorCountDirection, 10); // Konverterer integer verdi til string som mqtt kan sende
-          mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/feilRotert", StringBufferBoxErrorCountDirection); 
-          EjectorState = 0;
-          break;
-
-        default:
-          // Ukjent feil
-          EjectorState = 0;
-          break;
+          mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/feilRotert", StringBufferBoxErrorCountDirection);
+        }
       }
+      else if (BoxErrorCode == 3) {
+        // Eske OK
+        DEBUG_PRINTLN("Eske OK");
+        // Inkrementerer verdi med antall esker, og sender antallet
+        itoa(++BoxCount, StringBufferBoxCount, 10); // Konverterer integer verdi til string som mqtt kan sende
+        mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/telleverk", StringBufferBoxCount);
+      }
+
 
       if (!InterlockSamifi) RunState = 4;
       if (BtnStop) RunState = 2;
@@ -223,7 +220,7 @@ void loop() {
         mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/status", "4");
       }
 
-       analogWrite(PIN_output_InverterSpeedSignal, InverterSetSpeedByte);
+      analogWrite(PIN_output_InverterSpeedSignal, InverterSetSpeedByte);
 
       if (InterlockSamifi) RunState = 3;
       if (BtnStop) RunState = 2;
