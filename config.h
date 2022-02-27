@@ -54,5 +54,8 @@ const unsigned int EjectorActivateDelay = 425; // Forsinkelse i ms, fra funksjon
 const unsigned int EjectorOutInDelay = 0; // Forsinkelse i ms, mellom utkaster sylinder går ut, til den skal inn igjen
 const unsigned int EjectorOutInTimeout = 500; // Forsinkelse i ms, for timeout på utkaster sylinder vis sylinder sensor aldri blir aktivert
 
+// Omformer strømforbruk, oppdaterings interval
+const int SendPeriodInverterPowerUsage = 1000; // Hvor ofte omformer strømforbruk sendes
+
 
 #endif

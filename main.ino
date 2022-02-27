@@ -19,7 +19,6 @@ int RunState = 1;      // Hvilket steg maskinen er på
 int PrevRunState = 0;  // Forrigje steg maskinen var på
 bool FirstRunState = true;  // Om det er første syklus maskinen kjører på gjeldende steg
 
-const int SendPeriodInverterPowerUsage = 1000; // Hvor ofte omformer strømforbruk sendes
 unsigned long SendTimeInverterPowerUsage = 0; // Tiden når omformer strømforbruk sist ble sendt
 char StringBufferInverterPowerUsage[8]; // Buffer for å gjøre integer verdien om til string for å sendes via mqtt
 
