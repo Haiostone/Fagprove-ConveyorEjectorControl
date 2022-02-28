@@ -37,11 +37,6 @@
 #define mqttWillMessage "Offline"
 #define mqttWillOnMessage "Online"
 
-// Mqtt payload parameters
-#define payloadSendPeriod 60000
-#define payloadRbeTimeout 500
-#define payloadTopic "Melbu/ferdigvare/vatpakk/eskelimer/ut"
-
 
 // Function Parameters *******************************************************************************
 

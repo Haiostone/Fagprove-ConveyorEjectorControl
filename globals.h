@@ -51,8 +51,10 @@ bool EjectorSensorEdges;
 
 // Minne for hastighetsregulering på omformer
 byte InverterSetSpeedByte = 255; // Byte verdi som blir skrevet til analog utgang
-int InverterSetSpeedMiliVolt = 0; // Milivolt verdi mellom 0mV til 10000mV, kommer fra HMI via MQTT
+int InverterSetSpeedMiliVolt = 10000; // Milivolt verdi mellom 0mV til 10000mV, kommer fra HMI via MQTT
 const float MiliVoltToByteRatio = 0.0255; // Forholdet mellom Byte(255) og MiliVolt (10000)
+
+unsigned int EjectorActualActivateDelay = 0;
 
 unsigned long TimeNow = 0; // Minne for å holde på verdi fra Millis funksjon for å unngå å bruke funksjon flere ganger iløpet av en loop
 

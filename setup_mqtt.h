@@ -5,23 +5,25 @@
 
 void callback(char *topic, byte *payload, unsigned int length) // Callback funksjon for mottat payload
 {
-// Debugging
-#ifdef DEBUG
-    DEBUG_PRINT("Message arrived [");
-    DEBUG_PRINT(topic);
-    DEBUG_PRINT("] ");
-    for (int i = 0; i < length; i++)
-    {
-        DEBUG_PRINT((char)payload[i]);
-    }
-    DEBUG_PRINTLN();
-#endif
+    // Debugging
+    #ifdef DEBUG
+        DEBUG_PRINT("Message arrived [");
+        DEBUG_PRINT(topic);
+        DEBUG_PRINT("] ");
+        for (int i = 0; i < length; i++)
+        {
+            DEBUG_PRINT((char)payload[i]);
+        }
+        DEBUG_PRINTLN();
+    #endif
 
-if (strcmp(topic, "Melbu/ferdigvare/vatpakk/eskelimer/inn/hastTtransp") == 0) {
-    payload[length] = '\0'; // NULL terminerer payloadet for å få en string
-    InverterSetSpeedMiliVolt = atoi((char *)payload); // konverterer stringen til en integer
-    InverterSetSpeedByte = InverterSetSpeedMiliVolt * MiliVoltToByteRatio; // Gjør om milivolt verdi fra mqtt payload, til en byte verdi som kan brukes på analog ut
-}
+    if (strcmp(topic, "Melbu/ferdigvare/vatpakk/eskelimer/inn/hastTtransp") == 0) {
+        payload[length] = '\0'; // NULL terminerer payloadet for å få en string
+        InverterSetSpeedMiliVolt = atoi((char *)payload); // konverterer stringen til en integer
+        InverterSetSpeedByte = InverterSetSpeedMiliVolt * MiliVoltToByteRatio; // Gjør om milivolt verdi fra mqtt payload, til en byte verdi som kan brukes på analog ut
+
+        EjectorActualActivateDelay = EjectorActivateDelay / (float(InverterSetSpeedMiliVolt) / 10000); 
+   }
 }
 
 #if CONNECT_BROKER_WITH_DNS

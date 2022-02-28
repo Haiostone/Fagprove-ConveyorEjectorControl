@@ -38,6 +38,8 @@ void setup() {
   debugFunction();
 #endif
   ethInit();
+
+  EjectorActualActivateDelay = EjectorActivateDelay;
 }
 
 
@@ -111,6 +113,7 @@ void loop() {
       break;
 
     case 10:
+      // Omformer feil - Kan ikke reset **********************************
       if (FirstRunState) {
         digitalWrite(PIN_output_InverterStart, false);
         digitalWrite(PIN_output_InverterSpeedSignal, false);
@@ -164,7 +167,7 @@ void loop() {
         EjectorStatusCode = 0;
         while (!EjectorStatusCode) {
           updateInputs();
-          EjectorStatusCode = ActivateEjector(EjectorActivateDelay);
+          EjectorStatusCode = ActivateEjector(EjectorActualActivateDelay);
           if (EjectorStatusCode == 1) {
             // Utkastet Fulført
             DEBUG_PRINTLN("Utkastet fulført");
@@ -178,6 +181,7 @@ void loop() {
             mqtt.publish("Melbu/ferdigvare/vatpakk/eskelimer/ut/feilUtkaster", "Feil på utkaster mekanisme");
           }
         }
+        
         if (BoxErrorCode == 1) {
           // Eske feil: ulimt kant
           DEBUG_PRINTLN("ulimt kant");
